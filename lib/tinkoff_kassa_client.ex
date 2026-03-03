@@ -134,6 +134,31 @@ defprotocol TinkoffKassaClient do
           phone: String.t()
         }
 
+  @type add_card_params() :: %{
+          optional(:ip) => String.t(),
+          required(:customer_key) => String.t(),
+          optional(:check_type) => String.t()
+        }
+
+  @type add_card_success_result() :: %{
+          payment_id: integer(),
+          customer_key: String.t(),
+          request_key: String.t(),
+          payment_url: String.t()
+        }
+
+  @type get_add_card_state_params() :: %{
+          required(:request_key) => String.t()
+        }
+
+  @type get_add_card_state_success_result() :: %{
+          request_key: String.t(),
+          status: String.t(),
+          card_id: String.t() | nil,
+          rebill_id: String.t() | nil,
+          customer_key: String.t() | nil
+        }
+
   @type remove_card_params() :: %{
           optional(:ip) => String.t(),
           required(:customer_key) => String.t(),
@@ -314,6 +339,18 @@ defprotocol TinkoffKassaClient do
         ) :: result(get_customer_success_result())
   def get_customer(client, params)
 
+  @spec add_card(
+          t(),
+          add_card_params()
+        ) :: result(add_card_success_result())
+  def add_card(client, params)
+
+  @spec get_add_card_state(
+          t(),
+          get_add_card_state_params()
+        ) :: result(get_add_card_state_success_result())
+  def get_add_card_state(client, params)
+
   @spec remove_card(
           t(),
           remove_card_params()
@@ -374,4 +411,32 @@ defprotocol TinkoffKassaClient do
         ) ::
           {:ok, verify_notification_success_result()} | :error
   def verify_notification(client, encoded_notification)
+
+  @spec add_account_qr(
+          DefaultTinkoffKassaClient.t(),
+          map()
+        ) ::
+          TinkoffKassaClient.result(map())
+  def add_account_qr(client, params)
+
+  @spec get_add_account_qr_state(
+          DefaultTinkoffKassaClient.t(),
+          map()
+        ) ::
+          TinkoffKassaClient.result(map())
+  def get_add_account_qr_state(client, params)
+
+  @spec get_account_qr_list(
+          DefaultTinkoffKassaClient.t(),
+          map()
+        ) ::
+          TinkoffKassaClient.result(map())
+  def get_account_qr_list(client, params)
+
+  @spec send_request(
+          t(),
+          String.t(),
+          %{}
+        ) :: result(%{})
+  def send_request(client, url, params)
 end

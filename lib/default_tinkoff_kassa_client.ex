@@ -47,6 +47,7 @@ defimpl TinkoffKassaClient, for: DefaultTinkoffKassaClient do
   use HTTPoison.Base
 
   @api_endpoint "https://securepay.tinkoff.ru/v2"
+  # @api_endpoint "https://rest-api-test.tinkoff.ru/v2"
 
   @impl HTTPoison.Base
   def process_url(url) do
@@ -210,6 +211,93 @@ defimpl TinkoffKassaClient, for: DefaultTinkoffKassaClient do
   end
 
   @impl TinkoffKassaClient
+  @spec add_card(
+          DefaultTinkoffKassaClient.t(),
+          TinkoffKassaClient.add_card_params()
+        ) ::
+          TinkoffKassaClient.result(TinkoffKassaClient.add_card_success_result())
+  def add_card(client, params) do
+    body =
+      Enum.into(
+        params,
+        %{"TerminalKey" => client.terminal_key, "Password" => client.password},
+        fn
+          {:ip, value} -> {"IP", value}
+          {:customer_key, value} -> {"CustomerKey", value}
+          {:check_type, value} -> {"CheckType", value}
+        end
+      )
+
+    case post("/AddCard", body) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: %{"Success" => true}} = response} ->
+        success_result =
+          %{
+            payment_id: response.body["PaymentId"],
+            customer_key: response.body["CustomerKey"],
+            request_key: response.body["RequestKey"],
+            payment_url: response.body["PaymentURL"]
+          }
+
+        {:ok, success_result}
+
+      {:ok, %HTTPoison.Response{status_code: 200, body: %{"Success" => false}} = response} ->
+        api_error = %{
+          code: response.body["ErrorCode"],
+          message: response.body["Message"],
+          details: response.body["Details"]
+        }
+
+        {:error, {:api_error, api_error}}
+
+      {:error, %HTTPoison.Error{} = error} ->
+        {:error, {:network_error, error.reason}}
+    end
+  end
+
+  @impl TinkoffKassaClient
+  @spec get_add_card_state(
+          DefaultTinkoffKassaClient.t(),
+          TinkoffKassaClient.get_add_card_state_params()
+        ) ::
+          TinkoffKassaClient.result(TinkoffKassaClient.get_add_card_state_success_result())
+  def get_add_card_state(client, params) do
+    body =
+      Enum.into(
+        params,
+        %{"TerminalKey" => client.terminal_key, "Password" => client.password},
+        fn
+          {:request_key, value} -> {"RequestKey", value}
+        end
+      )
+
+    case post("/GetAddCardState", body) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: %{"Success" => true}} = response} ->
+        success_result =
+          %{
+            request_key: response.body["RequestKey"],
+            status: response.body["Status"],
+            card_id: response.body["CardId"],
+            rebill_id: response.body["RebillId"],
+            customer_key: response.body["CustomerKey"]
+          }
+
+        {:ok, success_result}
+
+      {:ok, %HTTPoison.Response{status_code: 200, body: %{"Success" => false}} = response} ->
+        api_error = %{
+          code: response.body["ErrorCode"],
+          message: response.body["Message"],
+          details: response.body["Details"]
+        }
+
+        {:error, {:api_error, api_error}}
+
+      {:error, %HTTPoison.Error{} = error} ->
+        {:error, {:network_error, error.reason}}
+    end
+  end
+
+  @impl TinkoffKassaClient
   @spec remove_card(
           DefaultTinkoffKassaClient.t(),
           TinkoffKassaClient.remove_card_params()
@@ -346,7 +434,7 @@ defimpl TinkoffKassaClient, for: DefaultTinkoffKassaClient do
             {"Recurrent", value}
 
           {:redirect_due_date, value} ->
-            {"RedirectDueDate", value |> DateTime.to_iso8601() |> String.trim()}
+            {"RedirectDueDate", value}
 
           {:receipt, value} ->
             {"Receipt", receipt_to_api_type(value)}
@@ -746,6 +834,153 @@ defimpl TinkoffKassaClient, for: DefaultTinkoffKassaClient do
 
       true ->
         :error
+    end
+  end
+
+  @impl TinkoffKassaClient
+  @spec add_account_qr(
+          DefaultTinkoffKassaClient.t(),
+          map()
+        ) ::
+          TinkoffKassaClient.result(map())
+  def add_account_qr(%DefaultTinkoffKassaClient{} = client, params) do
+    body =
+      Enum.into(
+        params,
+        %{"TerminalKey" => client.terminal_key, "Password" => client.password},
+        fn
+          {:data_type, value} ->
+            {"DataType", value}
+
+          {:description, value} ->
+            {"Description", value}
+
+          {:redirect_due_date, value} ->
+            {"RedirectDueDate", value}
+        end
+      )
+
+    case post("/AddAccountQr", body) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: %{"Success" => true}} = response} ->
+        success_result = response.body
+
+        {:ok, success_result}
+
+      {:ok, %HTTPoison.Response{status_code: 200, body: %{"Success" => false}} = response} ->
+        api_error = %{
+          code: response.body["ErrorCode"],
+          message: response.body["Message"],
+          details: response.body["Details"]
+        }
+
+        {:error, {:api_error, api_error}}
+
+      {:error, %HTTPoison.Error{} = error} ->
+        {:error, {:network_error, error.reason}}
+    end
+  end
+
+  @impl TinkoffKassaClient
+  @spec get_add_account_qr_state(
+          DefaultTinkoffKassaClient.t(),
+          map()
+        ) ::
+          TinkoffKassaClient.result(map())
+  def get_add_account_qr_state(%DefaultTinkoffKassaClient{} = client, params) do
+    body =
+      Enum.into(
+        params,
+        %{"TerminalKey" => client.terminal_key, "Password" => client.password},
+        fn
+          {:request_key, value} ->
+            {"RequestKey", value}
+        end
+      )
+
+    case post("/GetAddAccountQrState", body) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: %{"Success" => true}} = response} ->
+        success_result = response.body
+
+        {:ok, success_result}
+
+      {:ok, %HTTPoison.Response{status_code: 200, body: %{"Success" => false}} = response} ->
+        api_error = %{
+          code: response.body["ErrorCode"],
+          message: response.body["Message"],
+          details: response.body["Details"]
+        }
+
+        {:error, {:api_error, api_error}}
+
+      {:error, %HTTPoison.Error{} = error} ->
+        {:error, {:network_error, error.reason}}
+    end
+  end
+
+  @impl TinkoffKassaClient
+  @spec get_account_qr_list(
+          DefaultTinkoffKassaClient.t(),
+          map()
+        ) ::
+          TinkoffKassaClient.result(map())
+  def get_account_qr_list(%DefaultTinkoffKassaClient{} = client, params) do
+    body =
+      Enum.into(
+        params,
+        %{"TerminalKey" => client.terminal_key, "Password" => client.password}
+      )
+
+    case post("/GetAccountQrList", body) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: %{"Success" => true}} = response} ->
+        success_result = response.body
+
+        {:ok, success_result}
+
+      {:ok, %HTTPoison.Response{status_code: 200, body: %{"Success" => false}} = response} ->
+        api_error = %{
+          code: response.body["ErrorCode"],
+          message: response.body["Message"],
+          details: response.body["Details"]
+        }
+
+        {:error, {:api_error, api_error}}
+
+      {:error, %HTTPoison.Error{} = error} ->
+        {:error, {:network_error, error.reason}}
+    end
+  end
+
+  @impl TinkoffKassaClient
+  @spec send_request(
+          DefaultTinkoffKassaClient.t(),
+          String.t(),
+          %{}
+        ) ::
+          TinkoffKassaClient.result(%{})
+  def send_request(%DefaultTinkoffKassaClient{} = client, path, params) do
+    body =
+      Enum.into(
+        params,
+        %{"TerminalKey" => client.terminal_key, "Password" => client.password}
+      )
+
+    case post(path, body) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: %{"Success" => true}} = response} ->
+        success_result = Map.drop(response.body, ["Success", "ErrorCode", "Message", "Details"])
+
+        {:ok, success_result}
+
+      {:ok, %HTTPoison.Response{status_code: 200, body: %{"Success" => false}} = response} ->
+        api_error = %{
+          code: response.body["ErrorCode"],
+          message: response.body["Message"],
+          details: response.body["Details"]
+        }
+
+        {:error, {:api_error, api_error}}
+
+      {:error, %HTTPoison.Error{} = error} ->
+        {:error, {:network_error, error.reason}}
     end
   end
 
